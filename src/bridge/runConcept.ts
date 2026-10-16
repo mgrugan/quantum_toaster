@@ -1,3 +1,52 @@
+import {
+  BREAD_WORK_FUNCTION_EV,
+  LIGHT_SOURCES,
+  OPTIMAL_CLONE_FIDELITY,
+  QuantumToaster,
+  TSIRELSON_BOUND,
+  amplitudeBars,
+  bellState,
+  blackbodySpectrum,
+  boxSpectrumComparison,
+  buzekHilleryCloner,
+  chshValue,
+  cnotCloner,
+  commutatorDemo,
+  complex,
+  concurrence,
+  donenessReadout,
+  entanglementEntropy,
+  evolveDoneness,
+  fringeSpacing,
+  fringeVisibility,
+  harmonicEnergyNumeric,
+  heisenbergSlot,
+  isNormalized,
+  larmorPrecession,
+  measureDoneness,
+  measurementOrderComparison,
+  mulberry32,
+  photoelectric,
+  planckToRayleighJeansRatio,
+  probabilities as probsOf,
+  qubitFromBloch,
+  runChshExperiment,
+  sameStateAttempt,
+  sampleCrumbHits,
+  sampleJointMeasurements,
+  sampleMeasurements,
+  simulateDecoherence,
+  simulateTunneling,
+  superposition,
+  teleport,
+  twoParticleWavefunction,
+  wavelengthToFrequency,
+  zenoAnalytic,
+  zenoMonteCarlo,
+  zenoSimulated,
+  type Rng,
+  type Vector,
+} from '../quantum'
 import type { ConceptRun, EffectId } from './types'
 
 export interface ConceptInfo {
@@ -31,263 +80,302 @@ export const CONCEPT_LIST: ConceptInfo[] = [
   { number: 21, effect: 'teleportation', name: 'Teleportation', short: 'Slice moves via 2 classical bits' },
 ]
 
-/** Small deterministic PRNG so mock runs vary with the seed. */
-function mulberry32(seed: number) {
-  let a = seed >>> 0
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0
-    let t = a
-    t = Math.imul(t ^ (t >>> 15), t | 1)
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
-}
-
+const r2 = (x: number) => Math.round(x * 100) / 100
 const r3 = (x: number) => Math.round(x * 1000) / 1000
-
-function normalize(v: number[]): number[] {
-  const s = v.reduce((a, b) => a + b, 0)
-  return v.map((x) => x / s)
-}
-
-function sample(p: number[], u: number): number {
-  let acc = 0
-  for (let i = 0; i < p.length; i++) {
-    acc += p[i]
-    if (u < acc) return i
-  }
-  return p.length - 1
-}
-
+const clamp01 = (x: number) => Math.min(1, Math.max(0, x))
 const DONENESS = ['raw', 'light', 'golden', 'burnt']
+
+/** Pick ~`n` evenly spaced items (always keeps the last one). */
+function subsample<T>(xs: T[], n: number): T[] {
+  if (xs.length <= n) return xs
+  const out: T[] = []
+  for (let k = 0; k < n; k++) out.push(xs[Math.round((k * (xs.length - 1)) / (n - 1))])
+  return out
+}
+
+/** Random doneness state with random amplitudes and phases, every level populated. */
+function randomState(rng: Rng): Vector {
+  return superposition(
+    [0, 1, 2, 3].map(() => {
+      const mag = 0.3 + rng()
+      const ph = rng() * 2 * Math.PI
+      return complex(mag * Math.cos(ph), mag * Math.sin(ph))
+    }),
+  )
+}
+
+/** Inverse-CDF sample of x from a sampled density curve. */
+function sampleCurve(pts: { x: number; y: number }[], rng: Rng): number {
+  const total = pts.reduce((a, p) => a + p.y, 0)
+  let r = rng() * total
+  for (const p of pts) {
+    r -= p.y
+    if (r <= 0) return p.x
+  }
+  return pts[pts.length - 1].x
+}
 
 export function runConcept(number: number, seed: number): ConceptRun {
   const info = CONCEPT_LIST.find((c) => c.number === number) ?? CONCEPT_LIST[0]
-  const rand = mulberry32(seed * 7919 + number)
+  const rng = mulberry32(seed * 7919 + info.number)
   const base = { effect: info.effect, number: info.number, name: info.name }
 
-  // TODO(engine): replace with src/quantum calls
   switch (info.number) {
     case 1: {
-      const p = normalize([rand() + 0.2, rand() + 0.2, rand() + 0.2, rand() + 0.2])
+      const psi = randomState(rng)
+      const bars = amplitudeBars(psi)
+      const p = bars.map((b) => b.probability)
+      const norm = p.reduce((a, b) => a + b, 0)
+      const top = bars.reduce((a, b) => (b.probability > a.probability ? b : a))
       return {
         ...base,
-        caption: 'The slice is a unit vector of 4 complex amplitudes; bar heights are |cᵢ|².',
-        readouts: { 'Σ|c|²': 1, ...Object.fromEntries(p.map((x, i) => [`P(${DONENESS[i]})`, r3(x)])) },
+        caption: `|ψ⟩ is 4 complex amplitudes with Σ|c|² = ${r3(norm)}; the biggest bar is ${top.level} (|c|² = ${r2(top.probability)}, phase ${r2(top.phase)} rad).`,
+        readouts: { 'Σ|c|²': r3(norm), normalized: isNormalized(psi) ? 'yes' : 'no', ...Object.fromEntries(p.map((x, i) => [`P(${DONENESS[i]})`, r3(x)])) },
         payload: { probabilities: p },
       }
     }
     case 2: {
-      const p = normalize([0.25, 0.2, 0.35, 0.2].map((x) => x + rand() * 0.1))
+      const psi = randomState(rng)
+      const stats = sampleMeasurements(psi, 1000, rng)
       return {
         ...base,
-        caption: 'Until you look, the toast is a weighted blend of every doneness at once.',
-        readouts: { 'P(golden)': r3(p[2]), 'P(burnt)': r3(p[3]), 'basis states': 4 },
-        payload: { probabilities: p },
+        caption: `One state, all four donenesses at once: 1000 peeks found golden ${r2(stats.frequencies[2])} vs Born ${r2(stats.expected[2])}, burnt ${r2(stats.frequencies[3])} vs ${r2(stats.expected[3])}.`,
+        readouts: { 'P(golden)': r3(stats.expected[2]), 'observed golden': r3(stats.frequencies[2]), 'P(burnt)': r3(stats.expected[3]), shots: stats.shots },
+        payload: { probabilities: stats.expected },
       }
     }
     case 3: {
-      const p = [0.1, 0.3, 0.45, 0.15]
-      const outcome = sample(p, rand())
+      const psi = randomState(rng)
+      const m = measureDoneness(psi, rng)
+      const after = probsOf(m.postState)
       return {
         ...base,
-        caption: `Opening the lid sampled P(i) = |cᵢ|² and collapsed the state to "${DONENESS[outcome]}".`,
-        readouts: { outcome: DONENESS[outcome], 'P(outcome)': p[outcome], 'post-collapse P': 1 },
-        payload: { probabilities: p, outcome },
+        caption: `Opening the lid sampled the Born rule: "${m.level}" came up with P = ${r2(m.probability)}, and the state collapsed to it (P = ${r2(after[m.outcome])}).`,
+        readouts: { outcome: m.level, 'P(outcome)': r3(m.probability), 'post-collapse P': r3(after[m.outcome]) },
+        payload: { probabilities: m.probabilities, outcome: m.outcome },
       }
     }
     case 4: {
-      const levels = [1, 4, 9, 16]
+      const cmp = boxSpectrumComparison(4, Math.PI, 1, 80)
+      const e = cmp.map((c) => c.analytic)
       return {
         ...base,
-        caption: 'The coil is a particle in a box: only energies Eₙ = n²E₁ are allowed.',
-        readouts: { E1: 1, E2: 4, E3: 9, E4: 16 },
-        payload: { samples: levels.map((e) => e / 16) },
+        caption: `The coil is a particle in a box: only Eₙ = n²E₁ exist (${e.map(r2).join(', ')}); the numerical solver finds E₄ = ${r2(cmp[3].numeric)}.`,
+        readouts: { E1: r2(e[0]), E2: r2(e[1]), E3: r2(e[2]), E4: r2(e[3]), 'E4 numeric': r2(cmp[3].numeric) },
+        payload: { samples: e.map((x) => x / e[3]) },
       }
     }
-    case 5:
+    case 5: {
+      const omega = r2(0.5 + rng() * 1.5)
+      const g = harmonicEnergyNumeric(0, omega, 1, 801, 10 / Math.sqrt(omega))
       return {
         ...base,
-        caption: 'The crumb tray is a harmonic oscillator: its ground state still holds ħω/2.',
-        readouts: { 'E₀ (ħω)': 0.5, 'Δx₀': r3(Math.SQRT1_2) },
-        payload: { value: 0.5 },
+        caption: `The crumb tray is a harmonic oscillator (ω = ${omega}): even its ground state holds E₀ = ${r3(g.total)} = ħω/2, split into KE ${r3(g.kinetic)} + PE ${r3(g.potential)}.`,
+        readouts: { ω: omega, 'E₀ numeric': r3(g.total), 'ħω/2': r3(g.analytic), '⟨KE⟩': r3(g.kinetic) },
+        payload: { value: clamp01(g.total / (g.analytic * 2)) },
       }
+    }
     case 6: {
-      const series: number[][] = []
-      for (let k = 0; k <= 40; k++) {
-        const t = (k / 40) * 2 * Math.PI
-        const pg = Math.sin(t / 2) ** 2
-        series.push([1 - pg, 0, pg, 0])
-      }
+      const power = r2(0.7 + rng() * 0.8)
+      const ev = evolveDoneness({ power, steps: 240 })
+      const series = subsample(ev.probabilities, 60)
+      const peakBurnt = Math.max(...ev.probabilities.map((r) => r[3]))
       return {
         ...base,
-        caption: 'e^(−iHt) drives coherent Rabi oscillations raw → golden → raw. Norm stays 1.',
-        readouts: { 'Ω (Rabi)': 1, period: r3(2 * Math.PI), norm: 1 },
+        caption: `e^(−iHt) with Ω = ${power} cycles raw → burnt → raw in T = ${r2((2 * Math.PI) / power)}; peak P(burnt) = ${r2(peakBurnt)}, norm drift ${ev.maxNormError.toExponential(1)}.`,
+        readouts: { 'Ω (Rabi)': power, period: r2((2 * Math.PI) / power), 'max P(burnt)': r3(peakBurnt), 'norm error': ev.maxNormError.toExponential(1) },
         payload: { series },
       }
     }
     case 7: {
-      const p = normalize([0.1, 0.3, 0.4, 0.2].map((x) => x + rand() * 0.05))
-      const mean = p.reduce((a, x, i) => a + x * i, 0)
-      const v = p.reduce((a, x, i) => a + x * (i - mean) ** 2, 0)
+      const dur = r2(0.3 + rng() * 2.5)
+      const t = new QuantumToaster({ seed }).insertSlice('raw').heat(dur)
+      const psi = t.getAmplitudes()!
+      const { doneness } = donenessReadout(psi)
       return {
         ...base,
-        caption: 'The gauge reads ⟨ψ|D|ψ⟩, the expected doneness, with its variance.',
-        readouts: { '⟨D⟩': r3(mean), 'Var(D)': r3(v), 'ΔD': r3(Math.sqrt(v)) },
-        payload: { probabilities: p, value: mean / 3 },
+        caption: `After heating ${dur} time units the gauge reads ⟨D⟩ = ${r2(doneness.mean)} ± ${r2(doneness.stdDev)} (0 = raw, 3 = burnt).`,
+        readouts: { 'heat time': dur, '⟨D⟩': r3(doneness.mean), 'Var(D)': r3(doneness.variance), ΔD: r3(doneness.stdDev) },
+        payload: { probabilities: t.getProbabilities(), value: doneness.mean / 3 },
       }
     }
     case 8: {
-      const dx = 0.15 + rand() * 0.1
-      const dp = 0.5 / dx
-      const samples = Array.from({ length: 60 }, () => {
-        const g = (rand() + rand() + rand() - 1.5) * (dp / 6)
-        return Math.min(1, Math.max(0, 0.5 + g))
-      })
+      const sigma = r2(0.25 + rng() * 0.75)
+      const u = heisenbergSlot({ sigma, gridSize: 512 })
+      // Momentum spread mapped into [0,1]: p ∈ [-3, 3] → [0, 1].
+      const samples = Array.from({ length: 60 }, () => clamp01(0.5 + sampleCurve(u.momentum, rng) / 6))
       return {
         ...base,
-        caption: 'A narrow slot pins Δx, so the pop-up momentum spreads: Δx·Δp ≥ ħ/2.',
-        readouts: { 'Δx': r3(dx), 'Δp': r3(dp), 'Δx·Δp': 0.5 },
-        payload: { samples, value: dx },
+        caption: `Slot width σ = ${sigma} pins Δx = ${r3(u.deltaX)}, so the pop-up momentum spreads to Δp = ${r3(u.deltaP)}: Δx·Δp = ${r3(u.product)} ≥ ½.`,
+        readouts: { Δx: r3(u.deltaX), Δp: r3(u.deltaP), 'Δx·Δp': r3(u.product), bound: u.bound },
+        payload: { samples, value: clamp01(u.deltaX) },
       }
     }
-    case 9:
+    case 9: {
+      const theta = r2(0.3 + rng() * 2.5)
+      const c = measurementOrderComparison(theta, 0)
+      const comm = commutatorDemo()
       return {
         ...base,
-        caption: 'Measuring σz then σx gives different statistics than σx then σz: [σz, σx] = 2iσy.',
-        readouts: { 'P(z→x: +,+)': 0.5, 'P(x→z: +,+)': r3(0.25 + rand() * 0.1), '‖[A,B]‖': 2 },
-        payload: { probabilities: [0.5, 0.5], success: true },
+        caption: `Starting at θ = ${theta}: P(z=+) is ${r2(c.zDirect.plus)} if measured directly but ${r2(c.zAfterX.plus)} after an x measurement, because [σz, σx] = 2iσy ≠ 0.`,
+        readouts: { 'P(z+) direct': r3(c.zDirect.plus), 'P(z+) after x': r3(c.zAfterX.plus), commutes: comm.commutes ? 'yes' : 'no' },
+        payload: { success: !comm.commutes },
       }
+    }
     case 10: {
-      const bloch: [number, number, number][] = Array.from({ length: 48 }, (_, k) => {
-        const phi = (k / 48) * 4 * Math.PI
-        const th = Math.PI / 3
-        return [r3(Math.sin(th) * Math.cos(phi)), r3(Math.sin(th) * Math.sin(phi)), r3(Math.cos(th))]
-      })
+      const theta = 0.4 + rng() * 2.3
+      const B = r2(0.6 + rng() * 1.2)
+      const l = larmorPrecession({ theta, field: { x: 0, y: 0, z: B }, steps: 60 })
+      const bloch = l.series.map((s) => [r3(s.x), r3(s.y), r3(s.z)] as [number, number, number])
       return {
         ...base,
-        caption: 'The butter side is a spin-½ precessing at the Larmor frequency in the coil field.',
-        readouts: { 'ω_L': 1, 'θ (deg)': 60, '⟨σz⟩': 0.5 },
+        caption: `The butter-side spin precesses about the coil field B = ${B} at ω_L = ${r2(l.larmorFrequency)} (period ${r2(l.period)}), keeping ⟨σz⟩ = ${r2(bloch[0][2])} fixed.`,
+        readouts: { ω_L: r3(l.larmorFrequency), period: r2(l.period), 'θ (deg)': Math.round((theta * 180) / Math.PI), '⟨σz⟩': r3(bloch[0][2]) },
         payload: { bloch },
       }
     }
     case 11: {
-      const samples: number[] = []
-      while (samples.length < 200) {
-        const x = rand()
-        const I = Math.cos((x - 0.5) * 6 * Math.PI) ** 2 * Math.exp(-(((x - 0.5) * 3) ** 2))
-        if (rand() < I) samples.push(x)
-      }
+      const detector = rng() < 0.25 ? r2(0.6 + rng() * 0.4) : 0
+      const opts = { detector }
+      const hits = sampleCrumbHits(300, opts, rng)
+      const half = 30
+      const samples = hits.map((y) => clamp01((y + half) / (2 * half)))
+      const vis = fringeVisibility(opts)
       return {
         ...base,
-        caption: 'Crumbs land one at a time, yet build fringes: each crumb went through both slots.',
-        readouts: { crumbs: samples.length, fringes: 5, visibility: 0.97 },
+        caption:
+          detector > 0
+            ? `A which-slot detector (η = ${detector}) washed the fringes out to visibility ${r2(vis)}: watching kills interference.`
+            : `${hits.length} crumbs landed one at a time yet built fringes ${r2(fringeSpacing(opts))} apart (visibility ${r2(vis)}): each went through both slots.`,
+        readouts: { crumbs: hits.length, 'fringe spacing': r2(fringeSpacing(opts)), visibility: r3(vis), detector },
         payload: { samples },
       }
     }
     case 12: {
-      const T = r3(0.08 + rand() * 0.15)
-      const success = rand() < T * 3
+      const eOverV = r2(0.3 + rng() * 0.9)
+      const w = simulateTunneling({ energy: eOverV, height: 1, width: 1, snapshots: 8, gridSize: 512 })
+      const T = clamp01(w.transmitted)
+      const success = rng() < T
       return {
         ...base,
         caption: success
-          ? 'With E < V the toast still leaked through the latch: transmission T(E) > 0.'
-          : 'This time the toast bounced off the latch, but T(E) is never zero.',
-        readouts: { 'E/V': 0.6, 'T(E)': T, tunneled: success ? 'yes' : 'no' },
+          ? `At E/V = ${eOverV} the wavepacket leaked ${Math.round(T * 100)}% through the latch, and this slice was in that part: it tunneled.`
+          : `At E/V = ${eOverV} only ${Math.round(T * 100)}% of the wavepacket gets through; this slice bounced off the latch.`,
+        readouts: { 'E/V': eOverV, 'T (wavepacket)': r3(T), 'T(E) exact': r3(w.transmissionAtMeanEnergy), tunneled: success ? 'yes' : 'no' },
         payload: { value: T, success },
       }
     }
     case 13: {
-      const outcome = rand() < 0.5 ? 0 : 2
+      // Φ+ = (|00⟩ + |11⟩)/√2. Map qubit 0 → raw and 1 → burnt, so |00⟩ = |raw,raw⟩, |11⟩ = |burnt,burnt⟩.
+      const psi = bellState('phi+')
+      const joint = probsOf(psi)
+      const stats = sampleJointMeasurements(psi, 1000, rng)
+      const first = stats.firstRuns[0] ?? '00'
+      const outcome = first === '11' ? 3 : 0
       return {
         ...base,
-        caption: `Bell pair (|raw,raw⟩+|golden,golden⟩)/√2: both slices came out "${DONENESS[outcome]}".`,
-        readouts: { correlation: 1, 'entropy (bits)': 1, outcome: DONENESS[outcome] },
-        payload: { probabilities: [0.5, 0, 0.5, 0], outcome },
+        caption: `Bell pair (|raw,raw⟩ + |burnt,burnt⟩)/√2: both slices came out "${DONENESS[outcome]}"; over ${stats.shots} runs they agreed ${Math.round(stats.agreement * 100)}% of the time.`,
+        readouts: { outcome: DONENESS[outcome], agreement: r3(stats.agreement), 'entropy (bits)': r3(entanglementEntropy(psi)), concurrence: r3(concurrence(psi)) },
+        payload: { probabilities: [joint[0], 0, 0, joint[3]], outcome },
       }
     }
     case 14: {
-      const S = r3(2 * Math.SQRT2 + (rand() - 0.5) * 0.04)
+      const exp = runChshExperiment(1500, 'quantum', undefined, rng)
+      const exact = chshValue()
+      const S = r3(exp.S)
       return {
         ...base,
-        caption: 'CHSH on the toast pair beats every local hidden-variable theory (limit 2).',
-        readouts: { 'S (CHSH)': S, 'classical max': 2, 'Tsirelson': r3(2 * Math.SQRT2) },
-        payload: { value: S / (2 * Math.SQRT2), success: true },
+        caption: `Measured S = ${S} ± ${r2(exp.stdError)} on the toast pair (theory ${r3(exact.quantum.S)}), beating the local hidden-variable limit of 2.`,
+        readouts: { 'S (CHSH)': S, '± σ': r3(exp.stdError), 'classical max': 2, Tsirelson: r3(TSIRELSON_BOUND) },
+        payload: { value: S, success: S > 2 },
       }
     }
     case 15: {
-      const series: number[][] = []
-      for (let k = 0; k <= 30; k++) {
-        const c = Math.exp(-k / 8)
-        series.push([0.5, 0, 0.5 * c + 0.5 * (1 - c), 0])
-      }
-      const purity = r3(0.5 + 0.5 * Math.exp(-30 / 4))
+      const rate = r2(0.2 + rng() * 0.6)
+      const d = simulateDecoherence({ dephasingRate: rate, power: 0.6, tMax: 8, steps: 80 })
+      const series = subsample(d.series, 50).map((s) => [s.raw, s.light, s.golden, s.burnt])
+      const first = d.series[0]
+      const last = d.series[d.series.length - 1]
       return {
         ...base,
-        caption: 'Lindblad dephasing from kitchen air: coherences vanish, purity Tr(ρ²) → ½.',
-        readouts: { 'Tr(ρ²) start': 1, 'Tr(ρ²) end': purity, 'T₂': 8 },
-        payload: { series, value: purity },
+        caption: `Kitchen-air dephasing (γ = ${rate}) drains l1 coherence ${r2(first.coherence)} → ${r2(last.coherence)}; purity Tr(ρ²) falls ${r2(first.purity)} → ${r2(last.purity)}.`,
+        readouts: { γ: rate, 'Tr(ρ²) start': r3(first.purity), 'Tr(ρ²) end': r3(last.purity), 'entropy end': r3(last.entropy) },
+        payload: { series, value: clamp01(last.purity) },
       }
     }
     case 16: {
-      const N = 20
-      const pRaw = r3(Math.cos(Math.PI / (2 * N)) ** (2 * N))
+      const N = 5 + Math.floor(rng() * 26)
+      const T = Math.PI
       const series = Array.from({ length: N + 1 }, (_, k) => {
-        const p = Math.cos(Math.PI / (2 * N)) ** (2 * k)
-        return [p, 0, 1 - p, 0]
+        const pRaw = k === 0 ? 1 : zenoAnalytic(k, 1, (k * T) / N)
+        return [pRaw, 0, 0, 1 - pRaw]
       })
+      const pRaw = zenoSimulated(N)
+      const mc = zenoMonteCarlo(N, 1000, {}, rng)
       return {
         ...base,
-        caption: `Peeking ${N} times freezes the evolution: a watched toast never toasts.`,
-        readouts: { peeks: N, 'P(still raw)': pRaw, 'P(unwatched)': 0 },
+        caption: `Unwatched, the toast fully flips in T; peeking ${N} times keeps it raw with P = ${r2(pRaw)} (${mc.survived}/${mc.trials} Monte-Carlo toasts survived).`,
+        readouts: { peeks: N, 'P(still raw)': r3(pRaw), 'MC fraction': r3(mc.fraction), 'P(unwatched)': r3(zenoSimulated(1)) },
         payload: { series, value: pRaw },
       }
     }
-    case 17:
+    case 17: {
+      const n2 = 2 + Math.floor(rng() * 2)
+      const f = twoParticleWavefunction({ n1: 1, n2, symmetry: 'fermion' })
+      const b = twoParticleWavefunction({ n1: 1, n2, symmetry: 'boson' })
+      const same = sameStateAttempt(1)
       return {
         ...base,
-        caption: 'Antisymmetric ψ(x₁,x₂) = −ψ(x₂,x₁) forces ψ(x,x) = 0: the slices repel.',
-        readouts: { 'ψ(x,x)': 0, 'P(same slot)': 0 },
-        payload: { value: 0, success: false },
+        caption: `Fermion slices in levels 1 and ${n2} have ψ(x,x) = ${r3(f.diagonalMax)}: P(close together) = ${r3(f.closeProbability)} vs ${r3(b.closeProbability)} for bosons; both in level 1 has norm ${r3(same.fermionNorm)}, so it is forbidden.`,
+        readouts: { 'max |ψ(x,x)|': r3(f.diagonalMax), 'P(close) fermion': r3(f.closeProbability), 'P(close) boson': r3(b.closeProbability), 'same level allowed': same.fermionAllowed ? 'yes' : 'no' },
+        payload: { value: clamp01(f.closeProbability), success: same.fermionAllowed },
       }
-    case 18:
+    }
+    case 18: {
+      const theta = 0.3 + rng() * 2.5
+      const c = cnotCloner(theta)
+      const bh = buzekHilleryCloner(theta)
       return {
         ...base,
-        caption: 'Copying an unknown state is impossible; the best universal cloner reaches 5/6.',
-        readouts: { fidelity: r3(5 / 6), 'perfect copy': 'no' },
-        payload: { value: 5 / 6, success: false },
+        caption: `Copying an unknown state (θ = ${r2(theta)}) with a CNOT gives copy fidelity ${r2(c.copyFidelity)}; the best universal cloner reaches only ${r3(bh.copyFidelity)} = 5/6.`,
+        readouts: { 'CNOT copy F': r3(c.copyFidelity), 'Bužek–Hillery F': r3(bh.copyFidelity), 'optimal bound': r3(OPTIMAL_CLONE_FIDELITY), 'θ (deg)': Math.round((theta * 180) / Math.PI) },
+        payload: { value: c.copyFidelity, success: c.copyFidelity > 0.999 },
       }
+    }
     case 19: {
-      const T = Math.round(900 + rand() * 600)
-      const color = T < 1100 ? '#ff4a1c' : T < 1300 ? '#ff7a2a' : '#ffb24a'
-      const peakNm = Math.round(2.898e6 / T)
+      const T = Math.round(800 + rng() * 1400)
+      const bb = blackbodySpectrum(T, 100, 8000, 120)
+      const ratio = planckToRayleighJeansRatio(wavelengthToFrequency(400), T)
       return {
         ...base,
-        caption: 'Planck’s law sets the coil glow; Rayleigh–Jeans would blow up in the UV.',
-        readouts: { 'T (K)': T, 'λ_peak (nm)': peakNm, 'RJ/Planck @400nm': '∞-ish' },
-        payload: { color, value: (T - 900) / 600 },
+        caption: `At ${T} K Planck’s law peaks at ${Math.round(bb.wienPeakNm)} nm and the coil glows ${bb.glow.hex}; at 400 nm Rayleigh–Jeans overshoots by ×${(1 / ratio).toExponential(1)} (the UV catastrophe).`,
+        readouts: { 'T (K)': T, 'λ_peak (nm)': Math.round(bb.wienPeakNm), 'RJ/Planck @400nm': (1 / ratio).toExponential(1), glow: bb.glow.hex },
+        payload: { color: bb.glow.hex, value: clamp01((T - 800) / 1400) },
       }
     }
     case 20: {
-      const f = r3(0.6 + rand() * 1.0)
-      const success = f > 1
+      const src = LIGHT_SOURCES[Math.floor(rng() * LIGHT_SOURCES.length)]
+      const intensity = Math.round(200 + rng() * 1800)
+      const pe = photoelectric({ frequency: wavelengthToFrequency(src.wavelengthNm), intensity })
       return {
         ...base,
-        caption: success
-          ? 'Photon frequency beats the work function: electrons fly and browning starts.'
-          : 'Below threshold: no electrons, no browning, however bright the light.',
-        readouts: { 'f/f₀': f, 'KE_max (φ)': success ? r3(f - 1) : 0, ejected: success ? 'yes' : 'no' },
-        payload: { value: f / 1.6, success },
+        caption: pe.aboveThreshold
+          ? `${src.name} light (${src.wavelengthNm} nm, ${r2(pe.photonEnergyEv)} eV) beats the ${BREAD_WORK_FUNCTION_EV} eV work function: electrons fly with up to ${r2(pe.maxKineticEnergyEv)} eV.`
+          : `${src.name} light (${src.wavelengthNm} nm, ${r2(pe.photonEnergyEv)} eV) is below the ${BREAD_WORK_FUNCTION_EV} eV work function: no electrons, even at ${intensity} W/m².`,
+        readouts: { 'λ (nm)': src.wavelengthNm, 'photon (eV)': r2(pe.photonEnergyEv), 'KE_max (eV)': r2(pe.maxKineticEnergyEv), 'e⁻/s': pe.electronRate.toExponential(1) },
+        payload: { value: clamp01(pe.photonEnergyEv / (2 * BREAD_WORK_FUNCTION_EV)), success: pe.aboveThreshold },
       }
     }
     case 21:
     default: {
-      const bits = `${rand() < 0.5 ? 0 : 1}${rand() < 0.5 ? 0 : 1}`
+      const psi = qubitFromBloch(rng() * Math.PI, rng() * 2 * Math.PI)
+      const run = teleport(psi, rng)
+      const bits = `${run.m0}${run.m1}`
       return {
         ...base,
-        caption: `Bell pair + 2 classical bits (${bits}) moved the butter-side state to kitchen B.`,
-        readouts: { 'classical bits': bits, fidelity: 1, 'original left': 'destroyed' },
-        payload: { value: 1, success: true },
+        caption: `Alice's Bell measurement gave bits ${bits} (P = ${r2(run.probability)}); Bob applied ${run.correction} and his slice matches the original with fidelity ${r3(run.fidelity)} (was ${r2(run.fidelityBefore)} before correcting).`,
+        readouts: { 'classical bits': bits, correction: run.correction, fidelity: r3(run.fidelity), 'F before fix': r3(run.fidelityBefore) },
+        payload: { value: run.fidelity, success: run.fidelity > 0.99 },
       }
     }
   }

@@ -372,16 +372,16 @@ const Tunneling: FX = ({ p }) => {
   const slide = clamp01((t - 0.6) / 1.2)
   const after = clamp01((t - 1.8) / 1.4)
   const wallX = 40
-  const y = SLICE_Y - 50 * rise
+  const y = SLICE_Y - 22 * rise
   const sx = SLOT_X[0] - (SLOT_X[0] - wallX - 32) * slide
   return (
     <Scene
       coilLevel={0.5}
       front={
         <g>
-          <rect x={wallX - 6} y={-10} width={12} height={110} fill="#64748b" stroke="#cbd5e1" />
+          <rect x={wallX - 6} y={8} width={12} height={92} fill="#64748b" stroke="#cbd5e1" />
           {Array.from({ length: 8 }, (_, i) => (
-            <line key={i} x1={wallX - 6} x2={wallX + 6} y1={i * 14} y2={i * 14 + 10} stroke="#cbd5e1" opacity={0.6} />
+            <line key={i} x1={wallX - 6} x2={wallX + 6} y1={10 + i * 11} y2={10 + i * 11 + 8} stroke="#cbd5e1" opacity={0.6} />
           ))}
           <Label x={wallX} y={114} size={9} color="#94a3b8">barrier</Label>
           {t < 1.8 ? (

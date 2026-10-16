@@ -95,9 +95,18 @@ Concepts 19–20 use SI units from `src/quantum/constants.ts:1-8`. Every other c
 - **parts.tsx** holds the reusable SVG pieces: `Defs` (gradients and glow filter, `:7`), `Slice` (`:84`), `Ghosts` (`:117`), `Coil` (`:150`), `ToasterBody` (`:182`), `Scene` (`:261`) and `Label` (`:273`).
 - **useClock.ts** `:16-35` returns a requestAnimationFrame scene clock that stops after `stopAfter` seconds and runs 3× faster under `prefers-reduced-motion` (`:19`). Every effect computes its frame from `t` alone, so effects hold no imperative animation state.
 
-## Bridge: src/bridge/runConcept.ts
+## 7. Bridge: `src/bridge/runConcept.ts`
 
-_(filled in after bridge wiring)_
+This file is the glue between the buttons and the physics.
+- `CONCEPT_LIST` (`:59`) holds 21 `{number, effect, name, short}` entries, and the buttons render from it.
+- `runConcept(number, seed)` (`:118`) builds one RNG, `mulberry32(seed*7919 + n)` (`:120`). That RNG varies the physical parameters *and* drives the engine's sampling, so every click is different but replayable.
+- The `switch` (`:123`) has one case per concept. Each case calls the real engine, then fills `readouts` with 2–4 numbers, a `caption` stating what happened, and a `payload` for the animation. Examples:
+  - **#3 measurement** `:147`: `measureDoneness` collapses the state, and its `outcome` becomes the colour of the solid slice.
+  - **#12 tunneling** `:254`: `simulateTunneling` runs a split-step wavepacket at a random E/V. `success = rng() < T`, so the toast *sometimes* passes through the latch.
+  - **#13 entanglement** `:268`: `bellState('phi+')` plus `sampleJointMeasurements`. |00⟩ maps to raw/raw and |11⟩ to burnt/burnt, so both slices always match.
+  - **#14 Bell** `:282`: `runChshExperiment(1500)` gives S ≈ 2.8, which goes into `payload.value` and drives the meter past the classical line at 2.
+  - **#16 Zeno** `:306`: N peeks (5–30), plus `zenoAnalytic` and a Monte-Carlo cross-check.
+  - **#21 teleportation** `:369`: `teleport(qubitFromBloch(θ,φ))` returns the 2 classical bits, the correction (I/X/Z/ZX) and fidelity 1.
 
 ### The contract: `src/bridge/types.ts`
 
@@ -122,9 +131,9 @@ _(filled in after bridge wiring)_
 
 ## 9. Deploy: `.github/workflows/deploy.yml`
 
-- Triggers on pushes to `main`, on pull requests and on manual dispatch (`:3-7`).
+- Triggers on pushes to `main` or `claude/confident-knuth-2mr923` (the repo's current default branch), on pull requests and on manual dispatch (`:3-7`).
 - `build` (`:17-45`) runs Node 22 (`:26`), `npm ci`, **lint** (`:33`), **test** (`:36`) and `npm run build:pages` (`:39`). That script sets `GITHUB_PAGES=1`, which switches the Vite base to `/quantum_toaster/` (`vite.config.ts:8`). The `dist` folder is uploaded except on PRs (`:41-45`).
-- `deploy` (`:47-60`) runs only on pushes to main or on dispatch (`:49`). It uses `pages: write` and `id-token: write` (`:51-53`) and calls `actions/deploy-pages@v4` (`:60`).
+- `deploy` (`:47-60`) runs on pushes to those branches or on dispatch, never on PRs (`:49`). It uses `pages: write` and `id-token: write` (`:51-53`) and calls `actions/deploy-pages@v4` (`:60`).
 - **Repo setting:** Settings → Pages → Source must be **"GitHub Actions"**, not "Deploy from a branch". `public/.nojekyll` is also included.
 
 ## 10. Talking points

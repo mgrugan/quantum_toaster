@@ -2,7 +2,7 @@ name: Build and deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, claude/confident-knuth-2mr923]
   pull_request:
   workflow_dispatch:
 
@@ -46,7 +46,7 @@ jobs:
 
   deploy:
     needs: build
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       pages: write
