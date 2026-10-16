@@ -14,7 +14,7 @@ export default function ToasterScene({ run, runKey }: ToasterSceneProps): JSX.El
   return (
     <svg
       viewBox="0 0 400 320"
-      className="block h-auto w-full max-w-[560px] select-none overflow-visible"
+      className="block h-full max-h-full w-full max-w-[640px] select-none overflow-visible"
       role="img"
       aria-label={run ? `Quantum toaster: ${run.name}` : 'Quantum toaster, idle'}
     >
