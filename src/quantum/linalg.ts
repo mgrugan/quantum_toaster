@@ -44,23 +44,23 @@ export const mscaleReal = (a: Matrix, s: number): Matrix => a.map((row) => row.m
 
 /** Matrix product AB. */
 export function matmul(a: Matrix, b: Matrix): Matrix {
-  const n = a.length
   const m = b[0].length
   const k = b.length
-  const out = zerosMatrix(n, m)
-  for (let i = 0; i < n; i++)
+  return a.map((row) => {
+    const out: Complex[] = new Array(m)
     for (let j = 0; j < m; j++) {
       let re = 0
       let im = 0
       for (let l = 0; l < k; l++) {
-        const x = a[i][l]
+        const x = row[l]
         const y = b[l][j]
         re += x.re * y.re - x.im * y.im
         im += x.re * y.im + x.im * y.re
       }
-      out[i][j] = { re, im }
+      out[j] = { re, im }
     }
-  return out
+    return out
+  })
 }
 
 /** Matrix–vector product A|ψ⟩. */

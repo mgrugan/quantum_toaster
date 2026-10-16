@@ -16,8 +16,12 @@ export function fft(re: Float64Array, im: Float64Array, inverse = false): void {
     for (; j & bit; bit >>= 1) j ^= bit
     j ^= bit
     if (i < j) {
-      ;[re[i], re[j]] = [re[j], re[i]]
-      ;[im[i], im[j]] = [im[j], im[i]]
+      const tr = re[i]
+      re[i] = re[j]
+      re[j] = tr
+      const ti = im[i]
+      im[i] = im[j]
+      im[j] = ti
     }
   }
   const sign = inverse ? 1 : -1

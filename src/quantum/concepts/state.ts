@@ -13,7 +13,7 @@ import { sampleIndex, toRng } from '../rng'
 export const DONENESS_LEVELS = ['raw', 'light', 'golden', 'burnt'] as const
 export type DonenessLevel = (typeof DONENESS_LEVELS)[number]
 /** Hilbert-space dimension of the doneness qudit. */
-export const DONENESS_DIM = DONENESS_LEVELS.length
+export const DONENESS_DIM: number = DONENESS_LEVELS.length
 
 /** Resolve a level name or index to an index 0..3. */
 export function levelIndex(level: DonenessLevel | number): number {

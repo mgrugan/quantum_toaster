@@ -75,6 +75,8 @@ export interface JointSampleResult {
   shots: number
   /** Counts keyed by outcome "00" | "01" | "10" | "11". */
   counts: Record<string, number>
+  /** Same counts as an ordered array for bar charts. */
+  outcomes: { basis: string; count: number; frequency: number; expected: number }[]
   /** Fraction of shots where both slices agree. */
   agreement: number
   /** Sampled ⟨Z_A Z_B⟩ (+1 = perfectly correlated). */
@@ -100,6 +102,7 @@ export function sampleJointMeasurements(psi: Vector, shots = 1000, rng: Rng | nu
   return {
     shots,
     counts,
+    outcomes: ['00', '01', '10', '11'].map((b, i) => ({ basis: b, count: counts[b], frequency: counts[b] / shots, expected: probs[i] })),
     agreement: agree / shots,
     correlation: (agree - counts['01'] - counts['10']) / shots,
     marginalA0: (counts['00'] + counts['01']) / shots,

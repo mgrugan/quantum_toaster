@@ -61,7 +61,7 @@ export function numericSpectrum(
     return count
   }
   let hi = Math.max(...d) + 2 * t
-  let lo = Math.min(...d) - 2 * t
+  const lo = Math.min(...d) - 2 * t
   hi = Math.max(hi, lo + 1)
   const out: number[] = []
   for (let k = 0; k < nLevels; k++) {

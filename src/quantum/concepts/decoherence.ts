@@ -43,28 +43,45 @@ export function dampingOperator(rate: number, dim = DONENESS_DIM): Matrix {
   return m
 }
 
-/** Right-hand side of the Lindblad equation. */
-export function lindbladRhs(rho: Matrix, h: Matrix, jumps: Matrix[]): Matrix {
-  const comm = msub(matmul(h, rho), matmul(rho, h))
-  let out = mscale(comm, { re: 0, im: -1 })
-  for (const L of jumps) {
-    const Ld = dagger(L)
-    const LdL = matmul(Ld, L)
-    const term = msub(matmul(matmul(L, rho), Ld), mscaleReal(madd(matmul(LdL, rho), matmul(rho, LdL)), 0.5))
-    out = madd(out, term)
+/** A Lindblad generator ρ ↦ dρ/dt with L†L and H_eff precomputed. */
+export type LindbladGenerator = (rho: Matrix) => Matrix
+
+/**
+ * Build the Lindblad generator for H and jump operators Lₖ, written in the equivalent form
+ *   dρ/dt = −i(H_eff ρ − ρ H_eff†) + Σₖ LₖρLₖ†,   H_eff = H − (i/2) Σₖ Lₖ†Lₖ.
+ */
+export function lindbladGenerator(h: Matrix, jumps: Matrix[]): LindbladGenerator {
+  let sumLdL = zerosMatrix(h.length)
+  for (const L of jumps) sumLdL = madd(sumLdL, matmul(dagger(L), L))
+  const hEff = msub(h, mscale(sumLdL, { re: 0, im: 0.5 }))
+  const hEffDagger = dagger(hEff)
+  const pairs = jumps.map((L) => [L, dagger(L)] as const)
+  const minusI = { re: 0, im: -1 }
+  return (rho) => {
+    let out = mscale(msub(matmul(hEff, rho), matmul(rho, hEffDagger)), minusI)
+    for (const [L, Ld] of pairs) out = madd(out, matmul(matmul(L, rho), Ld))
+    return out
   }
-  return out
 }
 
-/** One RK4 step of the Lindblad equation. */
-export function lindbladStep(rho: Matrix, h: Matrix, jumps: Matrix[], dt: number): Matrix {
-  const k1 = lindbladRhs(rho, h, jumps)
-  const k2 = lindbladRhs(madd(rho, mscaleReal(k1, dt / 2)), h, jumps)
-  const k3 = lindbladRhs(madd(rho, mscaleReal(k2, dt / 2)), h, jumps)
-  const k4 = lindbladRhs(madd(rho, mscaleReal(k3, dt)), h, jumps)
+/** Right-hand side of the Lindblad equation dρ/dt (convenience wrapper). */
+export const lindbladRhs = (rho: Matrix, h: Matrix, jumps: Matrix[]): Matrix => lindbladGenerator(h, jumps)(rho)
+
+/** One classic RK4 step of dρ/dt = gen(ρ). */
+export function rk4Step(rho: Matrix, gen: LindbladGenerator, dt: number): Matrix {
+  const k1 = gen(rho)
+  const k2 = gen(madd(rho, mscaleReal(k1, dt / 2)))
+  const k3 = gen(madd(rho, mscaleReal(k2, dt / 2)))
+  const k4 = gen(madd(rho, mscaleReal(k3, dt)))
   const incr = madd(madd(k1, mscaleReal(k2, 2)), madd(mscaleReal(k3, 2), k4))
   return madd(rho, mscaleReal(incr, dt / 6))
 }
+
+/** One RK4 step of the Lindblad equation for H and jump operators (convenience wrapper). */
+export const lindbladStep = (rho: Matrix, h: Matrix, jumps: Matrix[], dt: number): Matrix => rk4Step(rho, lindbladGenerator(h, jumps), dt)
+
+/** Number of RK4 sub-steps that keeps dt·(fastest rate) ≤ 0.1 (well inside RK4 stability). */
+export const rk4Substeps = (dt: number, maxRate: number): number => Math.max(1, Math.ceil((dt * maxRate) / 0.1))
 
 export interface DecoherenceOptions {
   /** Initial density matrix (default: |ψ⟩⟨ψ| of the equal doneness superposition). */
@@ -98,18 +115,18 @@ export function simulateDecoherence({
   dephasingRate = 0.5,
   dampingRate = 0,
   tMax = 8,
-  steps = 160,
+  steps = 100,
 }: DecoherenceOptions = {}): { series: DecoherencePoint[]; finalRho: Matrix } {
   const h = donenessHamiltonian({ power })
   const jumps = [...dephasingOperators(dephasingRate, rho0.length)]
   if (dampingRate > 0) jumps.push(dampingOperator(dampingRate, rho0.length))
   const dt = tMax / steps
-  const maxRate = Math.max(dephasingRate, dampingRate * rho0.length, power * 2, 1e-9)
-  const sub = Math.max(1, Math.ceil((dt * maxRate) / 0.05))
+  const gen = lindbladGenerator(h, jumps)
+  const sub = rk4Substeps(dt, Math.max(dephasingRate, dampingRate * rho0.length, power * 2))
   let rho = rho0
   const series: DecoherencePoint[] = []
   for (let k = 0; k <= steps; k++) {
-    if (k > 0) for (let s = 0; s < sub; s++) rho = lindbladStep(rho, h, jumps, dt / sub)
+    if (k > 0) for (let s = 0; s < sub; s++) rho = rk4Step(rho, gen, dt / sub)
     const p = populations(rho)
     series.push({
       t: k * dt,
