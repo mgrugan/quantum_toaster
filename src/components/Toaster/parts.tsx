@@ -1,46 +1,23 @@
 import type { CSSProperties, ReactNode } from 'react'
-import { DONENESS, SLICE_Y, SLOT_X } from './utils'
+import { DONENESS, SLICE_Y, SLOT_X, clamp01, lerpHex } from './utils'
 
-export const COIL_IDLE = '#38bdf8'
-export const COIL_VIOLET = '#a78bfa'
+/** Flat minimalist palette. */
+export const INK = '#18181b'
+export const TEXT = '#3f3f46'
+export const MUTED = '#a1a1aa'
+export const ACCENT = '#2563eb'
+export const BODY = '#f4f4f5'
+export const PANEL = '#e4e4e7'
+export const STROKE = '#d4d4d8'
+export const SLOT = '#3f3f46'
+export const COIL_IDLE = MUTED
+export const COIL_HOT = '#f97316'
+export const COIL_ACCENT = ACCENT
 
 export function Defs() {
   return (
     <defs>
-      <linearGradient id="qt-chrome" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stopColor="#f8fafc" />
-        <stop offset="0.25" stopColor="#94a3b8" />
-        <stop offset="0.5" stopColor="#e2e8f0" />
-        <stop offset="0.75" stopColor="#64748b" />
-        <stop offset="1" stopColor="#cbd5e1" />
-      </linearGradient>
-      <linearGradient id="qt-chrome-v" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stopColor="#f1f5f9" />
-        <stop offset="1" stopColor="#64748b" />
-      </linearGradient>
-      <radialGradient id="qt-glass" cx="0.5" cy="0.45" r="0.7">
-        <stop offset="0" stopColor="#4c1d95" stopOpacity="0.85" />
-        <stop offset="0.6" stopColor="#1e1b4b" stopOpacity="0.9" />
-        <stop offset="1" stopColor="#020617" stopOpacity="0.95" />
-      </radialGradient>
-      <radialGradient id="qt-floor" cx="0.5" cy="0.5" r="0.5">
-        <stop offset="0" stopColor="#38bdf8" stopOpacity="0.25" />
-        <stop offset="1" stopColor="#38bdf8" stopOpacity="0" />
-      </radialGradient>
-      <filter id="qt-glow" x="-50%" y="-50%" width="200%" height="200%">
-        <feGaussianBlur stdDeviation="3" result="b" />
-        <feMerge>
-          <feMergeNode in="b" />
-          <feMergeNode in="SourceGraphic" />
-        </feMerge>
-      </filter>
-      <filter id="qt-glow-big" x="-80%" y="-80%" width="260%" height="260%">
-        <feGaussianBlur stdDeviation="7" result="b" />
-        <feMerge>
-          <feMergeNode in="b" />
-          <feMergeNode in="SourceGraphic" />
-        </feMerge>
-      </filter>
+      {/* Semantic blurs only (decoherence, no-cloning copy, uncertainty trail). */}
       <filter id="qt-blur-1" x="-30%" y="-30%" width="160%" height="160%">
         <feGaussianBlur stdDeviation="1.2" />
       </filter>
@@ -100,12 +77,12 @@ export function Slice({
       <g transform={transform}>
         <g className={className} style={style} filter={filter}>
           <g transform="translate(0 -36)">
-            <path d={SLICE_PATH} fill={color} stroke="#6b3e17" strokeOpacity={0.55} strokeWidth={3} strokeLinejoin="round" />
-            <path d={CRUMB_PATH} fill="#ffffff" opacity={0.1} />
-            <circle cx={-8} cy={30} r={1.4} fill="#000" opacity={0.15} />
-            <circle cx={9} cy={44} r={1.2} fill="#000" opacity={0.15} />
-            <circle cx={-3} cy={56} r={1.3} fill="#000" opacity={0.15} />
-            {butter && <rect x={4} y={12} width={16} height={11} rx={3} fill="#fde047" stroke="#ca8a04" strokeWidth={1} />}
+            <path d={SLICE_PATH} fill={color} stroke="#b9772f" strokeOpacity={0.6} strokeWidth={1.5} strokeLinejoin="round" />
+            <path d={CRUMB_PATH} fill="none" stroke="#b9772f" strokeOpacity={0.25} strokeWidth={1} />
+            <circle cx={-8} cy={30} r={1.1} fill={INK} opacity={0.18} />
+            <circle cx={9} cy={44} r={1} fill={INK} opacity={0.18} />
+            <circle cx={-3} cy={56} r={1.1} fill={INK} opacity={0.18} />
+            {butter && <rect x={4} y={12} width={16} height={11} rx={3} fill="#fde68a" stroke="#d4a017" strokeWidth={1} />}
           </g>
         </g>
       </g>
@@ -147,16 +124,20 @@ export function Ghosts({
   )
 }
 
+/** Flat coil stroke colour: grey when cold, moving to `color` as it heats. */
+function coilStroke(color: string, level: number): string {
+  return lerpHex(COIL_IDLE, color, clamp01((level - 0.2) / 0.7))
+}
+
 function Coil({ x, color, level }: { x: number; color: string; level: number }) {
   return (
     <g>
-      <rect x={x - 37} y={90} width={74} height={13} rx={5} fill="#05070d" stroke="#334155" strokeWidth={1} />
-      <rect x={x - 33} y={93} width={66} height={7} rx={3} fill={color} opacity={0.25 + 0.75 * level} filter="url(#qt-glow)" />
+      <rect x={x - 37} y={90} width={74} height={13} rx={5} fill={SLOT} />
       <path
         d={Array.from({ length: 11 }, (_, i) => `${i === 0 ? 'M' : 'L'} ${x - 32 + i * 6.4} ${i % 2 ? 94 : 100}`).join(' ')}
-        stroke="#fff"
-        strokeOpacity={0.35 + 0.6 * level}
-        strokeWidth={1.2}
+        stroke={coilStroke(color, level)}
+        strokeWidth={1.4}
+        strokeLinejoin="round"
         fill="none"
       />
     </g>
@@ -180,55 +161,55 @@ export interface SceneProps {
 }
 
 export function ToasterBody({
-  coilColor = COIL_IDLE,
+  coilColor = COIL_HOT,
   coilLevel = 0.5,
   leverDown = false,
   dialAngle = -40,
   behind,
   atomSpeed = 1,
 }: Omit<SceneProps, 'front' | 'under' | 'dx' | 'dy'>) {
+  const heat = coilStroke(coilColor, coilLevel)
   return (
     <g>
-      <ellipse cx={200} cy={276} rx={160} ry={12} fill="#000" opacity={0.45} />
-      <ellipse cx={200} cy={276} rx={150} ry={20} fill="url(#qt-floor)" />
-      <ellipse cx={104} cy={266} rx={14} ry={7} fill="#0b0f19" />
-      <ellipse cx={296} cy={266} rx={14} ry={7} fill="#0b0f19" />
+      {/* soft flat shadow */}
+      <ellipse cx={200} cy={274} rx={150} ry={9} fill={PANEL} opacity={0.8} />
+      <rect x={96} y={262} width={20} height={8} rx={3} fill={STROKE} />
+      <rect x={284} y={262} width={20} height={8} rx={3} fill={STROKE} />
       {/* body */}
-      <rect x={70} y={84} width={260} height={180} rx={34} fill="url(#qt-chrome)" stroke="#e2e8f0" strokeOpacity={0.6} />
-      <rect x={82} y={88} width={236} height={22} rx={11} fill="url(#qt-chrome-v)" opacity={0.9} />
-      <rect x={90} y={112} width={6} height={130} rx={3} fill="#fff" opacity={0.25} />
+      <rect x={70} y={84} width={260} height={180} rx={34} fill={BODY} stroke={STROKE} strokeWidth={1.5} />
+      <line x1={104} y1={110} x2={296} y2={110} stroke={STROKE} strokeWidth={1} />
       {/* slots + coils */}
       <Coil x={150} color={coilColor} level={coilLevel} />
       <Coil x={250} color={coilColor} level={coilLevel} />
       <g clipPath="url(#qt-above-slot)">{behind}</g>
-      <rect x={110} y={100} width={180} height={3} rx={1.5} fill="#e2e8f0" opacity={0.7} />
       {/* atom panel */}
-      <rect x={88} y={122} width={150} height={122} rx={16} fill="url(#qt-glass)" stroke="#67e8f9" strokeOpacity={0.55} strokeWidth={2} />
-      <line x1={98} y1={138} x2={98} y2={228} stroke={coilColor} strokeWidth={3} strokeLinecap="round" opacity={0.4 + 0.6 * coilLevel} filter="url(#qt-glow)" />
-      <line x1={228} y1={138} x2={228} y2={228} stroke={coilColor} strokeWidth={3} strokeLinecap="round" opacity={0.4 + 0.6 * coilLevel} filter="url(#qt-glow)" />
+      <rect x={88} y={122} width={150} height={122} rx={16} fill={PANEL} stroke={STROKE} strokeWidth={1.5} />
+      <line x1={98} y1={138} x2={98} y2={228} stroke={heat} strokeWidth={1.5} strokeLinecap="round" />
+      <line x1={228} y1={138} x2={228} y2={228} stroke={heat} strokeWidth={1.5} strokeLinecap="round" />
       {[
         [96, 130],
         [230, 130],
         [96, 236],
         [230, 236],
       ].map(([cx, cy]) => (
-        <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r={3} fill="#cbd5e1" stroke="#475569" />
+        <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r={1.8} fill="none" stroke={MUTED} strokeWidth={1} />
       ))}
       <g className="qt-atom" style={{ animationDuration: `${12 / Math.max(0.1, atomSpeed)}s` }}>
         {[0, 60, 120].map((r) => (
           <g key={r} transform={`rotate(${r} 163 183)`}>
-            <ellipse cx={163} cy={183} rx={52} ry={17} fill="none" stroke={r === 60 ? COIL_VIOLET : '#67e8f9'} strokeWidth={1.6} opacity={0.85} filter="url(#qt-glow)" />
-            <circle cx={215} cy={183} r={3.4} fill="#e0f2fe" filter="url(#qt-glow)" />
+            <ellipse cx={163} cy={183} rx={52} ry={17} fill="none" stroke={MUTED} strokeWidth={1} />
+            <circle cx={215} cy={183} r={2.6} fill={INK} />
           </g>
         ))}
       </g>
-      <circle cx={163} cy={183} r={9 + 3 * coilLevel} fill={coilColor} opacity={0.9} filter="url(#qt-glow-big)" />
-      <circle cx={163} cy={183} r={4} fill="#fff" />
+      <circle cx={163} cy={183} r={6 + 3 * coilLevel} fill="none" stroke={heat} strokeWidth={1.5} />
+      <circle cx={163} cy={183} r={3} fill={INK} />
       {/* lever */}
-      <rect x={266} y={122} width={14} height={78} rx={7} fill="#0f172a" stroke="#475569" />
-      <rect x={271} y={130} width={4} height={62} rx={2} fill={coilColor} opacity={0.5 + 0.5 * coilLevel} filter="url(#qt-glow)" />
+      <rect x={266} y={122} width={14} height={78} rx={7} fill={PANEL} stroke={STROKE} strokeWidth={1.5} />
+      <line x1={273} y1={132} x2={273} y2={190} stroke={heat} strokeWidth={1.5} strokeLinecap="round" />
       <g style={{ transform: `translateY(${leverDown ? 52 : 0}px)`, transition: 'transform 0.35s ease' }}>
-        <rect x={248} y={126} width={50} height={15} rx={6} fill="url(#qt-chrome-v)" stroke="#94a3b8" />
+        <rect x={248} y={126} width={50} height={15} rx={6} fill="#ffffff" stroke={STROKE} strokeWidth={1.5} />
+        <line x1={258} y1={133.5} x2={288} y2={133.5} stroke={INK} strokeWidth={0.75} opacity={0.5} />
       </g>
       {/* psi dial */}
       {Array.from({ length: 13 }, (_, i) => {
@@ -238,21 +219,19 @@ export function ToasterBody({
             key={i}
             x1={284 + Math.sin(a) * 25}
             y1={228 - Math.cos(a) * 25}
-            x2={284 + Math.sin(a) * 29}
-            y2={228 - Math.cos(a) * 29}
-            stroke={i % 3 ? '#a78bfa' : '#67e8f9'}
-            strokeWidth={1.5}
-            opacity={0.8}
+            x2={284 + Math.sin(a) * (i % 3 ? 28 : 30)}
+            y2={228 - Math.cos(a) * (i % 3 ? 28 : 30)}
+            stroke={i % 3 ? MUTED : INK}
+            strokeWidth={1}
           />
         )
       })}
-      <circle cx={284} cy={228} r={21} fill="url(#qt-chrome)" stroke="#94a3b8" />
-      <circle cx={284} cy={228} r={14} fill="#0b1020" stroke={COIL_VIOLET} strokeWidth={2} filter="url(#qt-glow)" />
-      <text x={284} y={234} textAnchor="middle" fontSize={16} fill="#c4b5fd" fontFamily="serif">
+      <circle cx={284} cy={228} r={20} fill="#ffffff" stroke={STROKE} strokeWidth={1.5} />
+      <text x={284} y={233.5} textAnchor="middle" fontSize={15} fontWeight={300} fill={TEXT} fontFamily="inherit">
         Ψ
       </text>
       <g style={{ transform: `rotate(${dialAngle}deg)`, transformOrigin: '284px 228px', transition: 'transform 0.6s cubic-bezier(.3,1.6,.5,1)' }}>
-        <circle cx={284} cy={210} r={2.5} fill="#67e8f9" filter="url(#qt-glow)" />
+        <line x1={284} y1={214} x2={284} y2={209} stroke={ACCENT} strokeWidth={1.5} strokeLinecap="round" />
       </g>
     </g>
   )
@@ -270,9 +249,9 @@ export function Scene({ under, front, dx = 0, dy = 0, ...body }: SceneProps) {
   )
 }
 
-export function Label({ x, y, children, color = '#e2e8f0', size = 11, anchor = 'middle' }: { x: number; y: number; children: ReactNode; color?: string; size?: number; anchor?: 'start' | 'middle' | 'end' }) {
+export function Label({ x, y, children, color = TEXT, size = 11, anchor = 'middle' }: { x: number; y: number; children: ReactNode; color?: string; size?: number; anchor?: 'start' | 'middle' | 'end' }) {
   return (
-    <text x={x} y={y} textAnchor={anchor} fontSize={size} fill={color} fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace" style={{ paintOrder: 'stroke' }} stroke="#020617" strokeWidth={3}>
+    <text x={x} y={y} textAnchor={anchor} fontSize={size} fill={color} fontFamily="inherit" fontWeight={300} letterSpacing="0.02em">
       {children}
     </text>
   )

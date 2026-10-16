@@ -1,5 +1,5 @@
 import type { ConceptRun, EffectId } from '../../bridge/types'
-import { COIL_VIOLET, Ghosts, Label, Scene, Slice } from './parts'
+import { ACCENT, COIL_ACCENT, Ghosts, INK, Label, MUTED, PANEL, STROKE, Scene, Slice, TEXT } from './parts'
 import { useClock } from './useClock'
 import {
   DONENESS,
@@ -47,18 +47,18 @@ const State: FX = ({ p }) => {
       behind={<Slice x={SLOT_X[0]} color={mixColor(probs)} />}
       front={
         <g>
-          <rect x={196} y={14} width={128} height={70} rx={8} fill="#0b1020" opacity={0.85} stroke="#67e8f9" strokeOpacity={0.5} />
+          <rect x={196} y={14} width={128} height={70} rx={8} fill="#ffffff" stroke={STROKE} strokeWidth={1.5} />
           {probs.map((pr, i) => {
             const h = Math.sqrt(pr) * 46 * grow
             return (
               <g key={i}>
-                <rect x={208 + i * 29} y={66 - h} width={18} height={h} rx={3} fill={DONENESS[i]} stroke="#67e8f9" strokeWidth={1} filter="url(#qt-glow)" />
+                <rect x={208 + i * 29} y={66 - h} width={18} height={h} rx={3} fill={DONENESS[i]} stroke={STROKE} strokeWidth={1} />
                 <Label x={217 + i * 29} y={78} size={8}>{`|${DONENESS_LABELS[i][0]}⟩`}</Label>
               </g>
             )
           })}
-          <Label x={260} y={26} size={9} color="#67e8f9">amplitudes |ψ|</Label>
-          <ellipse cx={SLOT_X[0]} cy={60} rx={44} ry={46} fill="none" stroke="#67e8f9" strokeDasharray="4 6" opacity={0.6} className="qt-dash" />
+          <Label x={260} y={26} size={9}>amplitudes |ψ|</Label>
+          <ellipse cx={SLOT_X[0]} cy={60} rx={44} ry={46} fill="none" stroke={ACCENT} strokeWidth={1} strokeDasharray="4 6" opacity={0.6} className="qt-dash" />
         </g>
       }
     />
@@ -70,10 +70,10 @@ const Superposition: FX = ({ p }) => {
   const probs = normProbs(p.probabilities, [0.25, 0.25, 0.25, 0.25])
   return (
     <Scene
-      coilColor={COIL_VIOLET}
+      coilColor={COIL_ACCENT}
       coilLevel={0.7}
       behind={<Ghosts probs={probs} spread={1.6} />}
-      front={<Label x={SLOT_X[0]} y={14} color="#c4b5fd">{'α|raw⟩+β|light⟩+γ|gold⟩+δ|burnt⟩'}</Label>}
+      front={<Label x={SLOT_X[0]} y={14}>{'α|raw⟩+β|light⟩+γ|gold⟩+δ|burnt⟩'}</Label>}
     />
   )
 }
@@ -98,9 +98,12 @@ const Measurement: FX = ({ p }) => {
       }
       front={
         <g>
-          <rect x={0} y={0} width={400} height={320} fill="#fff" opacity={flash * 0.9} />
+          {flash > 0 && (
+            <circle cx={SLOT_X[0]} cy={60} r={20 + (1 - flash) * 80 + (t > 1.2 ? 30 : 0)} fill="none" stroke={ACCENT} strokeWidth={1.5 + 2 * flash} opacity={flash} />
+          )}
+          <rect x={0} y={0} width={400} height={320} fill={ACCENT} opacity={flash * 0.06} />
           {collapsed && (
-            <Label x={SLOT_X[0]} y={18} color="#fde68a" size={12}>{`collapsed → ${DONENESS_LABELS[outcome]}`}</Label>
+            <Label x={SLOT_X[0]} y={18} size={12}>{`collapsed → ${DONENESS_LABELS[outcome]}`}</Label>
           )}
         </g>
       }
@@ -123,12 +126,12 @@ const Quantization: FX = () => {
         <g>
           {[1, 2, 3, 4].map((k) => (
             <g key={k}>
-              <line x1={14} x2={58} y1={levelY(k)} y2={levelY(k)} stroke={k === n ? '#fb923c' : '#475569'} strokeWidth={k === n ? 3 : 1.5} filter={k === n ? 'url(#qt-glow)' : undefined} />
-              <Label x={62} y={levelY(k) + 4} anchor="start" size={9} color="#94a3b8">{`n=${k}`}</Label>
+              <line x1={14} x2={58} y1={levelY(k)} y2={levelY(k)} stroke={k === n ? ACCENT : STROKE} strokeWidth={k === n ? 2 : 1.5} />
+              <Label x={62} y={levelY(k) + 4} anchor="start" size={9}>{`n=${k}`}</Label>
             </g>
           ))}
-          <circle cx={36} cy={levelY(n) - 6} r={5} fill="#fde68a" filter="url(#qt-glow)" style={{ transition: 'cy 0.15s' }} />
-          <Label x={36} y={30} size={9} color="#fb923c">E ∝ n²</Label>
+          <circle cx={36} cy={levelY(n) - 6} r={4.5} fill={ACCENT} style={{ transition: 'cy 0.15s' }} />
+          <Label x={36} y={30} size={9}>E ∝ n²</Label>
         </g>
       }
     />
@@ -146,12 +149,12 @@ const ZeroPoint: FX = () => {
       dx={dx}
       dy={dy}
       coilLevel={glow}
-      coilColor="#22d3ee"
+      coilColor={COIL_ACCENT}
       behind={<Slice x={SLOT_X[0] + dx * 1.5} y={SLICE_Y + dy * 1.5} />}
       front={
         <g>
-          <ellipse cx={200} cy={170} rx={150} ry={110} fill="none" stroke="#22d3ee" strokeOpacity={0.15 + glow * 0.3} strokeWidth={6} filter="url(#qt-blur-6)" />
-          <Label x={200} y={300} color="#67e8f9">{'E₀ = ½ħω  (never zero)'}</Label>
+          <ellipse cx={200} cy={170} rx={150 + glow * 20} ry={110 + glow * 14} fill="none" stroke={ACCENT} strokeOpacity={0.15 + glow * 0.6} strokeWidth={1} strokeDasharray="2 5" />
+          <Label x={200} y={300}>{'E₀ = ½ħω  (never zero)'}</Label>
         </g>
       }
     />
@@ -166,7 +169,7 @@ const Evolution: FX = ({ p }) => {
   const row = sampleSeries(series, t / dur)
   return (
     <Scene
-      coilColor="#f59e0b"
+      
       coilLevel={0.5 + 0.5 * Math.sin(t * 4) ** 2}
       leverDown
       behind={<Slice x={SLOT_X[0]} color={mixColor(row)} />}
@@ -175,8 +178,8 @@ const Evolution: FX = ({ p }) => {
           {row.map((v, i) => (
             <rect key={i} x={214 + i * 22} y={70 - v * 50} width={16} height={v * 50} rx={2} fill={DONENESS[i]} opacity={0.9} />
           ))}
-          <line x1={210} x2={302} y1={70} y2={70} stroke="#475569" />
-          <Label x={256} y={14} size={9} color="#fcd34d">{'iħ ∂ψ/∂t = Hψ'}</Label>
+          <line x1={210} x2={302} y1={70} y2={70} stroke={STROKE} strokeWidth={1.5} />
+          <Label x={256} y={14} size={9}>{'iħ ∂ψ/∂t = Hψ'}</Label>
         </g>
       }
     />
@@ -198,14 +201,14 @@ const Observables: FX = ({ p }) => {
       behind={<Slice x={SLOT_X[0]} color={mixColor(probs)} />}
       front={
         <g transform="translate(250 72)">
-          <path d="M -54 0 A 54 54 0 0 1 54 0" fill="#0b1020" stroke="#475569" strokeWidth={2} />
+          <path d="M -54 0 A 54 54 0 0 1 54 0" fill="#ffffff" stroke={STROKE} strokeWidth={1.5} />
           {DONENESS.map((c, i) => {
             const a = ((-80 + (160 * i) / 3) * Math.PI) / 180
-            return <circle key={i} cx={Math.sin(a) * 44} cy={-Math.cos(a) * 44} r={4} fill={c} />
+            return <circle key={i} cx={Math.sin(a) * 44} cy={-Math.cos(a) * 44} r={4} fill={c} stroke={STROKE} strokeWidth={1} />
           })}
-          <line x1={0} y1={0} x2={Math.sin(rad) * 46} y2={-Math.cos(rad) * 46} stroke="#f472b6" strokeWidth={3} strokeLinecap="round" filter="url(#qt-glow)" />
-          <circle r={4} fill="#f472b6" />
-          <Label x={0} y={16} size={10} color="#f9a8d4">{`⟨D⟩ = ${exp.toFixed(2)}`}</Label>
+          <line x1={0} y1={0} x2={Math.sin(rad) * 46} y2={-Math.cos(rad) * 46} stroke={ACCENT} strokeWidth={1.5} strokeLinecap="round" />
+          <circle r={3} fill={ACCENT} />
+          <Label x={0} y={16} size={10}>{`⟨D⟩ = ${exp.toFixed(2)}`}</Label>
         </g>
       }
     />
@@ -232,10 +235,10 @@ const Uncertainty: FX = ({ p }) => {
       }
       front={
         <g>
-          <rect x={113} y={88} width={35 * narrow} height={16} fill="#94a3b8" stroke="#e2e8f0" />
-          <rect x={187 - 35 * narrow} y={88} width={35 * narrow} height={16} fill="#94a3b8" stroke="#e2e8f0" />
-          <Label x={150} y={120} size={9} color="#fda4af">{'Δx ↓'}</Label>
-          <Label x={150} y={14} color="#fda4af">{'Δx·Δp ≥ ħ/2  → Δp ↑'}</Label>
+          <rect x={113} y={88} width={35 * narrow} height={16} fill={PANEL} stroke={STROKE} strokeWidth={1.5} />
+          <rect x={187 - 35 * narrow} y={88} width={35 * narrow} height={16} fill={PANEL} stroke={STROKE} strokeWidth={1.5} />
+          <Label x={150} y={120} size={9}>{'Δx ↓'}</Label>
+          <Label x={150} y={14}>{'Δx·Δp ≥ ħ/2  → Δp ↑'}</Label>
         </g>
       }
     />
@@ -268,10 +271,10 @@ const NonCommuting: FX = () => {
               <Slice x={0} y={-36} scale={0.6} butter />
             </g>
           </g>
-          <Label x={120} y={100} color="#fcd34d" size={10}>Rotate → Flip</Label>
-          <Label x={280} y={100} color="#fcd34d" size={10}>Flip → Rotate</Label>
-          {t > 2.7 && <Label x={200} y={50} color="#f472b6" size={16}>≠</Label>}
-          {t > 2.7 && <Label x={200} y={310} color="#f9a8d4">{'AB − BA ≠ 0'}</Label>}
+          <Label x={120} y={100} size={10}>Rotate → Flip</Label>
+          <Label x={280} y={100} size={10}>Flip → Rotate</Label>
+          {t > 2.7 && <Label x={200} y={50} size={16} color={ACCENT}>≠</Label>}
+          {t > 2.7 && <Label x={200} y={310}>{'AB − BA ≠ 0'}</Label>}
         </g>
       }
     />
@@ -298,16 +301,16 @@ const Spin: FX = ({ p }) => {
   const sx = Math.cos(phi)
   return (
     <Scene
-      coilColor={COIL_VIOLET}
+      coilColor={COIL_ACCENT}
       coilLevel={0.6}
       behind={<Slice x={SLOT_X[0]} y={SLICE_Y - 22} scaleX={Math.abs(sx) < 0.06 ? 0.06 : sx} color={sx < 0 ? DONENESS[2] : DONENESS[0]} butter={sx > 0} />}
       front={
         <g transform="translate(250 50)">
-          <circle r={36} fill="#0b1020" opacity={0.8} stroke="#a78bfa" />
-          <ellipse rx={36} ry={10} fill="none" stroke="#a78bfa" strokeOpacity={0.5} strokeDasharray="3 3" />
-          <line x1={0} y1={0} x2={x * 34} y2={-z * 30 + y * 9} stroke="#f0abfc" strokeWidth={3} strokeLinecap="round" filter="url(#qt-glow)" />
-          <circle cx={x * 34} cy={-z * 30 + y * 9} r={3.5} fill="#f0abfc" />
-          <Label x={0} y={52} size={9} color="#c4b5fd">Bloch vector</Label>
+          <circle r={36} fill="#ffffff" stroke={STROKE} strokeWidth={1.5} />
+          <ellipse rx={36} ry={10} fill="none" stroke={MUTED} strokeWidth={1} strokeDasharray="3 3" />
+          <line x1={0} y1={0} x2={x * 34} y2={-z * 30 + y * 9} stroke={ACCENT} strokeWidth={1.5} strokeLinecap="round" />
+          <circle cx={x * 34} cy={-z * 30 + y * 9} r={3} fill={ACCENT} />
+          <Label x={0} y={52} size={9}>Bloch vector</Label>
         </g>
       }
     />
@@ -336,12 +339,11 @@ const Interference: FX = ({ p }) => {
     const sx = SLOT_X[i % 2]
     const tx = 60 + clamp01(s) * 280
     const e = k * k
-    crumbs.push(<circle key={i} cx={sx + (tx - sx) * k} cy={70 + (296 - 70) * e} r={1.8} fill="#fcd34d" opacity={0.9} />)
+    crumbs.push(<circle key={i} cx={sx + (tx - sx) * k} cy={70 + (296 - 70) * e} r={1.8} fill="#b9772f" opacity={0.9} />)
   })
   const max = Math.max(4, ...counts)
   return (
     <Scene
-      coilColor="#22d3ee"
       coilLevel={0.8}
       behind={
         <g>
@@ -351,12 +353,12 @@ const Interference: FX = ({ p }) => {
       }
       front={
         <g>
-          <rect x={56} y={298} width={288} height={3} fill="#475569" />
+          <rect x={56} y={298} width={288} height={1.5} fill={STROKE} />
           {counts.map((c, i) => (
-            <rect key={i} x={60 + (i * 280) / bins + 1} y={298 - (c / max) * 40} width={280 / bins - 2} height={(c / max) * 40} fill="#fbbf24" opacity={0.85} rx={1} />
+            <rect key={i} x={60 + (i * 280) / bins + 1} y={298 - (c / max) * 40} width={280 / bins - 2} height={(c / max) * 40} fill="#e0b072" rx={1} />
           ))}
           {crumbs}
-          <Label x={200} y={316} size={9} color="#fcd34d">crumb fringes on the counter</Label>
+          <Label x={200} y={316} size={9}>crumb fringes on the counter</Label>
         </g>
       }
     />
@@ -379,11 +381,11 @@ const Tunneling: FX = ({ p }) => {
       coilLevel={0.5}
       front={
         <g>
-          <rect x={wallX - 6} y={8} width={12} height={92} fill="#64748b" stroke="#cbd5e1" />
+          <rect x={wallX - 6} y={8} width={12} height={92} fill={PANEL} stroke={STROKE} strokeWidth={1.5} />
           {Array.from({ length: 8 }, (_, i) => (
-            <line key={i} x1={wallX - 6} x2={wallX + 6} y1={10 + i * 11} y2={10 + i * 11 + 8} stroke="#cbd5e1" opacity={0.6} />
+            <line key={i} x1={wallX - 6} x2={wallX + 6} y1={10 + i * 11} y2={10 + i * 11 + 8} stroke={MUTED} strokeWidth={1} />
           ))}
-          <Label x={wallX} y={114} size={9} color="#94a3b8">barrier</Label>
+          <Label x={wallX} y={114} size={9}>barrier</Label>
           {t < 1.8 ? (
             <Slice x={sx} y={y} scale={0.7} />
           ) : (
@@ -392,7 +394,7 @@ const Tunneling: FX = ({ p }) => {
               {ok && <Slice x={wallX - 32 - after * 4} y={y} scale={0.7} opacity={T * after + 0.05} className="qt-shimmer" />}
             </g>
           )}
-          {t > 2 && <Label x={70} y={140} anchor="start" color="#86efac">{`T = ${T.toFixed(2)}`}</Label>}
+          {t > 2 && <Label x={70} y={140} anchor="start" color={ACCENT}>{`T = ${T.toFixed(2)}`}</Label>}
         </g>
       }
     />
@@ -417,7 +419,7 @@ const Entanglement: FX = ({ p }) => {
   const c = DONENESS[idx]
   return (
     <Scene
-      coilColor="#f472b6"
+      coilColor={COIL_ACCENT}
       coilLevel={0.6}
       behind={
         <g>
@@ -427,8 +429,8 @@ const Entanglement: FX = ({ p }) => {
       }
       front={
         <g>
-          <path d={`M ${SLOT_X[0] + 18} 60 Q 200 ${20 + Math.sin(t * 3) * 10} ${SLOT_X[1] - 18} 60`} stroke="#f472b6" strokeWidth={3} fill="none" strokeDasharray="6 5" className="qt-dash" filter="url(#qt-glow)" />
-          <Label x={200} y={16} color="#f9a8d4">{'|raw raw⟩ + |burnt burnt⟩'}</Label>
+          <path d={`M ${SLOT_X[0] + 18} 60 Q 200 ${20 + Math.sin(t * 3) * 10} ${SLOT_X[1] - 18} 60`} stroke={ACCENT} strokeWidth={1.5} fill="none" strokeDasharray="6 5" className="qt-dash" />
+          <Label x={200} y={16}>{'|raw raw⟩ + |burnt burnt⟩'}</Label>
         </g>
       }
     />
@@ -449,24 +451,24 @@ const Bell: FX = ({ p }) => {
       coilLevel={0.5}
       under={
         <g>
-          <rect x={8} y={150} width={40} height={50} rx={6} fill="#0f172a" stroke="#22d3ee" />
-          <circle cx={28} cy={175} r={8} fill={blinkL ? '#22d3ee' : '#164e63'} filter="url(#qt-glow)" />
-          <rect x={352} y={150} width={40} height={50} rx={6} fill="#0f172a" stroke="#f472b6" />
-          <circle cx={372} cy={175} r={8} fill={blinkL ? '#f472b6' : '#831843'} filter="url(#qt-glow)" />
+          <rect x={8} y={150} width={40} height={50} rx={6} fill="#ffffff" stroke={STROKE} strokeWidth={1.5} />
+          <circle cx={28} cy={175} r={7} fill={blinkL ? ACCENT : PANEL} stroke={STROKE} />
+          <rect x={352} y={150} width={40} height={50} rx={6} fill="#ffffff" stroke={STROKE} strokeWidth={1.5} />
+          <circle cx={372} cy={175} r={7} fill={blinkL ? ACCENT : PANEL} stroke={STROKE} />
         </g>
       }
       behind={<Slice x={SLOT_X[0]} />}
       front={
         <g>
-          <circle cx={200 - shot * 160} cy={175} r={3} fill="#22d3ee" filter="url(#qt-glow)" />
-          <circle cx={200 + shot * 160} cy={175} r={3} fill="#f472b6" filter="url(#qt-glow)" />
+          <circle cx={200 - shot * 160} cy={175} r={2.5} fill={ACCENT} />
+          <circle cx={200 + shot * 160} cy={175} r={2.5} fill={ACCENT} />
           <g transform="translate(90 292)">
-            <rect width={W} height={12} rx={6} fill="#1e293b" />
-            <rect width={(fill / maxS) * W} height={12} rx={6} fill={fill > 2 ? '#a3e635' : '#38bdf8'} filter="url(#qt-glow)" />
-            <line x1={(2 / maxS) * W} x2={(2 / maxS) * W} y1={-6} y2={18} stroke="#f87171" strokeWidth={2} />
-            <Label x={(2 / maxS) * W} y={-9} size={8} color="#fca5a5">classical 2</Label>
-            <line x1={((2 * Math.SQRT2) / maxS) * W} x2={((2 * Math.SQRT2) / maxS) * W} y1={-3} y2={15} stroke="#a3e635" strokeDasharray="2 2" />
-            <Label x={W + 6} y={10} anchor="start" size={10} color="#d9f99d">{`S=${fill.toFixed(2)}`}</Label>
+            <rect width={W} height={12} rx={6} fill={PANEL} />
+            <rect width={(fill / maxS) * W} height={12} rx={6} fill={fill > 2 ? ACCENT : MUTED} />
+            <line x1={(2 / maxS) * W} x2={(2 / maxS) * W} y1={-6} y2={18} stroke={INK} strokeWidth={1} />
+            <Label x={(2 / maxS) * W} y={-9} size={8}>classical 2</Label>
+            <line x1={((2 * Math.SQRT2) / maxS) * W} x2={((2 * Math.SQRT2) / maxS) * W} y1={-3} y2={15} stroke={ACCENT} strokeDasharray="2 2" />
+            <Label x={W + 6} y={10} anchor="start" size={10}>{`S=${fill.toFixed(2)}`}</Label>
           </g>
         </g>
       }
@@ -502,9 +504,9 @@ const Decoherence: FX = ({ p }) => {
           {Array.from({ length: 16 }, (_, i) => {
             const a = (i / 16) * Math.PI * 2 + t
             const r = 70 - 30 * k
-            return <circle key={i} cx={SLOT_X[0] + Math.cos(a) * r} cy={60 + Math.sin(a) * r * 0.6} r={2} fill="#94a3b8" opacity={0.3 + 0.5 * k} />
+            return <circle key={i} cx={SLOT_X[0] + Math.cos(a) * r} cy={60 + Math.sin(a) * r * 0.6} r={2} fill={MUTED} opacity={0.3 + 0.5 * k} />
           })}
-          <Label x={290} y={40} color="#cbd5e1">{k > 0.9 ? 'classical' : 'environment leaks…'}</Label>
+          <Label x={290} y={40}>{k > 0.9 ? 'classical' : 'environment leaks…'}</Label>
         </g>
       }
     />
@@ -520,22 +522,21 @@ const Zeno: FX = () => {
   const count = Math.floor(t / period)
   return (
     <Scene
-      coilColor="#fb923c"
-      coilLevel={0.95}
+            coilLevel={0.95}
       leverDown
       behind={<Slice x={SLOT_X[0]} color={DONENESS[0]} />}
       front={
         <g>
           <g transform={`translate(${SLOT_X[0]} 14)`}>
             <g transform={`scale(1 ${Math.max(0.05, blink)})`}>
-              <path d="M -26 0 Q 0 -18 26 0 Q 0 18 -26 0 Z" fill="#f8fafc" stroke="#0f172a" strokeWidth={2} />
-              <circle r={7} fill="#2563eb" />
-              <circle r={3} fill="#020617" />
+              <path d="M -26 0 Q 0 -18 26 0 Q 0 18 -26 0 Z" fill="#ffffff" stroke={INK} strokeWidth={1.25} />
+              <circle r={7} fill={ACCENT} />
+              <circle r={3} fill={INK} />
             </g>
           </g>
-          {ph < 0.2 && <path d={`M ${SLOT_X[0]} 28 L ${SLOT_X[0] - 20} 70 L ${SLOT_X[0] + 20} 70 Z`} fill="#bfdbfe" opacity={0.35} />}
-          <Label x={250} y={40} color="#fdba74">{`looks: ${count}`}</Label>
-          <Label x={250} y={58} color="#fdba74" size={9}>still raw!</Label>
+          {ph < 0.2 && <path d={`M ${SLOT_X[0]} 28 L ${SLOT_X[0] - 20} 70 L ${SLOT_X[0] + 20} 70 Z`} fill={ACCENT} opacity={0.12} />}
+          <Label x={250} y={40}>{`looks: ${count}`}</Label>
+          <Label x={250} y={58} size={9}>still raw!</Label>
         </g>
       }
     />
@@ -563,17 +564,17 @@ const Exclusion: FX = () => {
       }
       front={
         <g>
-          <Label x={xA} y={yA + 40} size={14} color="#0f172a">↑</Label>
-          <Label x={xB} y={yB + 40} size={14} color="#0f172a">↑</Label>
+          <Label x={xA} y={yA + 40} size={14} color={INK}>↑</Label>
+          <Label x={xB} y={yB + 40} size={14} color={INK}>↑</Label>
           {spark && (
-            <g transform={`translate(150 ${SLICE_Y + 20})`} filter="url(#qt-glow)">
+            <g transform={`translate(150 ${SLICE_Y + 20})`}>
               {Array.from({ length: 8 }, (_, i) => {
                 const a = (i / 8) * Math.PI * 2
-                return <line key={i} x1={Math.cos(a) * 6} y1={Math.sin(a) * 6} x2={Math.cos(a) * 22} y2={Math.sin(a) * 22} stroke="#facc15" strokeWidth={2.5} />
+                return <line key={i} x1={Math.cos(a) * 6} y1={Math.sin(a) * 6} x2={Math.cos(a) * 22} y2={Math.sin(a) * 22} stroke={ACCENT} strokeWidth={1.5} strokeLinecap="round" />
               })}
             </g>
           )}
-          {t > 2.2 && <Label x={200} y={14} color="#fde047">one fermion per state</Label>}
+          {t > 2.2 && <Label x={200} y={14}>one fermion per state</Label>}
         </g>
       }
     />
@@ -599,9 +600,9 @@ const NoCloning: FX = ({ p }) => {
       }
       front={
         <g>
-          {scan < 1 && <rect x={SLOT_X[0] - 30 + scan * 200} y={20} width={4} height={76} fill="#22d3ee" opacity={0.8} filter="url(#qt-glow)" />}
-          <Label x={200} y={14} color="#67e8f9">{`copy fidelity F = ${F.toFixed(2)}`}</Label>
-          {appear > 0.9 && <Label x={SLOT_X[1]} y={120} color="#fca5a5" size={9}>blurry copy</Label>}
+          {scan < 1 && <rect x={SLOT_X[0] - 30 + scan * 200} y={20} width={4} height={76} fill={ACCENT} opacity={0.6} />}
+          <Label x={200} y={14}>{`copy fidelity F = ${F.toFixed(2)}`}</Label>
+          {appear > 0.9 && <Label x={SLOT_X[1]} y={120} size={9}>blurry copy</Label>}
         </g>
       }
     />
@@ -610,7 +611,7 @@ const NoCloning: FX = ({ p }) => {
 
 /* 19 */
 function heatColor(k: number): string {
-  const stops = ['#2a0a05', '#b91c1c', '#f97316', '#fde047', '#ffffff']
+  const stops = ['#a1a1aa', '#b91c1c', '#f97316', '#facc15', '#2563eb']
   const x = clamp01(k) * (stops.length - 1)
   const i = Math.min(stops.length - 2, Math.floor(x))
   return lerpHex(stops[i], stops[i + 1], x - i)
@@ -628,10 +629,10 @@ const Blackbody: FX = ({ p }) => {
       behind={<Slice x={SLOT_X[0]} color={lerpHex(DONENESS[0], DONENESS[2], k)} />}
       front={
         <g>
-          <rect x={60} y={60} width={280} height={60} fill={color} opacity={0.12 * k} filter="url(#qt-blur-6)" />
-          <rect x={300} y={20} width={16} height={60} rx={8} fill="#1e293b" stroke="#475569" />
+          
+          <rect x={300} y={20} width={16} height={60} rx={8} fill="#ffffff" stroke={STROKE} strokeWidth={1.5} />
           <rect x={304} y={76 - 52 * k} width={8} height={52 * k} rx={4} fill={color} />
-          <Label x={308} y={96} size={9} color="#fde68a">{`T ${Math.round(800 + 5200 * k)}K`}</Label>
+          <Label x={308} y={96} size={9}>{`T ${Math.round(800 + 5200 * k)}K`}</Label>
         </g>
       }
     />
@@ -643,7 +644,7 @@ const Photoelectric: FX = ({ p }) => {
   const t = useClock(8)
   const ok = p.success ?? true
   const beam = clamp01(t / 0.6)
-  const color = ok ? '#a78bfa' : '#ef4444'
+  const color = ok ? ACCENT : MUTED
   const waves = ok ? 12 : 5
   const x0 = 10
   const y0 = 10
@@ -663,15 +664,15 @@ const Photoelectric: FX = ({ p }) => {
       behind={<Slice x={SLOT_X[0]} />}
       front={
         <g>
-          <path d={pts} stroke={color} strokeWidth={2.5} fill="none" filter="url(#qt-glow)" />
+          <path d={pts} stroke={color} strokeWidth={1.5} fill="none" />
           {ok &&
             t > 0.6 &&
             Array.from({ length: 10 }, (_, i) => {
               const k = ((t - 0.6) * 0.9 + i / 10) % 1
               const a = -0.6 - (i % 5) * 0.25
-              return <circle key={i} cx={SLOT_X[0] + Math.cos(a) * k * 170} cy={50 + Math.sin(a) * k * 120} r={3} fill="#67e8f9" opacity={1 - k} filter="url(#qt-glow)" />
+              return <circle key={i} cx={SLOT_X[0] + Math.cos(a) * k * 170} cy={50 + Math.sin(a) * k * 120} r={2.5} fill={ACCENT} opacity={1 - k} />
             })}
-          <Label x={260} y={30} color={ok ? '#67e8f9' : '#fca5a5'}>{ok ? 'f > f₀ : e⁻ ejected!' : 'f < f₀ : nothing'}</Label>
+          <Label x={260} y={30}>{ok ? 'f > f₀ : e⁻ ejected!' : 'f < f₀ : nothing'}</Label>
         </g>
       }
     />
@@ -691,16 +692,16 @@ const Teleportation: FX = ({ p }) => {
   const ty = 210
   return (
     <Scene
-      coilColor="#22d3ee"
+      coilColor={COIL_ACCENT}
       coilLevel={0.6}
       behind={<Slice x={SLOT_X[0]} opacity={1 - dis} filter={dis > 0.2 ? 'url(#qt-blur-1)' : undefined} color={DONENESS[2]} />}
       front={
         <g>
           <g transform={`translate(${tx - 50 * 0.3} ${ty}) scale(0.3)`} opacity={0.5 + 0.5 * clamp01(t / 1)}>
-            <rect x={0} y={84} width={100} height={110} rx={20} fill="url(#qt-chrome)" stroke="#e2e8f0" />
-            <rect x={16} y={88} width={68} height={12} rx={5} fill="#05070d" />
-            <rect x={20} y={91} width={60} height={6} rx={3} fill="#22d3ee" filter="url(#qt-glow)" />
-            <rect x={12} y={120} width={76} height={60} rx={10} fill="url(#qt-glass)" stroke="#67e8f9" />
+            <rect x={0} y={84} width={100} height={110} rx={20} fill="#f4f4f5" stroke={STROKE} strokeWidth={4} />
+            <rect x={16} y={88} width={68} height={12} rx={5} fill={TEXT} />
+            <line x1={22} y1={94} x2={78} y2={94} stroke={ACCENT} strokeWidth={3} />
+            <rect x={12} y={120} width={76} height={60} rx={10} fill={PANEL} stroke={STROKE} strokeWidth={4} />
           </g>
           <g clipPath="url(#qt-tele-clip)">
             <Slice x={tx} y={ty + 84 * 0.3 - 22} scale={0.3} opacity={mat * F} color={DONENESS[2]} filter={F < 0.8 ? 'url(#qt-blur-1)' : undefined} />
@@ -717,11 +718,11 @@ const Teleportation: FX = ({ p }) => {
             const ey = ty + 10 + py * 0.3
             const cx = sx + (ex - sx) * easeInOut(k)
             const cy = sy + (ey - sy) * easeInOut(k) - Math.sin(k * Math.PI) * 60
-            return <circle key={i} cx={cx} cy={cy} r={1.8} fill={i % 3 ? '#e0b072' : '#67e8f9'} opacity={dis} filter="url(#qt-glow)" />
+            return <circle key={i} cx={cx} cy={cy} r={1.8} fill={i % 3 ? '#b9772f' : ACCENT} opacity={dis} />
           })}
-          <path d={`M 200 296 L ${tx} 296`} stroke="#334155" strokeDasharray="3 4" />
-          {t > 1 && t < 3 && <Label x={200 + (tx - 200) * clamp01((t - 1) / 2)} y={292} size={9} color="#fde68a">01</Label>}
-          {mat > 0.5 && <Label x={tx} y={198} size={9} color="#67e8f9">arrived!</Label>}
+          <path d={`M 200 296 L ${tx} 296`} stroke={STROKE} strokeDasharray="3 4" />
+          {t > 1 && t < 3 && <Label x={200 + (tx - 200) * clamp01((t - 1) / 2)} y={292} size={9}>01</Label>}
+          {mat > 0.5 && <Label x={tx} y={198} size={9} color={ACCENT}>arrived!</Label>}
         </g>
       }
     />
