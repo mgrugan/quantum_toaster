@@ -1,0 +1,19 @@
+.qt-flicker { animation: qt-flicker 0.7s ease-in-out infinite alternate; }
+@keyframes qt-flicker {
+  0% { opacity: 1; transform: translateX(0); }
+  50% { opacity: 0.35; transform: translateX(1.5px); }
+  100% { opacity: 0.9; transform: translateX(-1.5px); }
+}
+.qt-bob { animation: qt-bob 3s ease-in-out infinite; }
+@keyframes qt-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+.qt-atom { transform-box: view-box; transform-origin: 163px 183px; animation: qt-spin 12s linear infinite; }
+@keyframes qt-spin { to { transform: rotate(360deg); } }
+.qt-dash { animation: qt-dash 1s linear infinite; }
+@keyframes qt-dash { to { stroke-dashoffset: -22; } }
+.qt-shimmer { animation: qt-flicker 0.25s ease-in-out infinite alternate; }
+.qt-scene-in { animation: qt-in 0.25s ease-out; }
+@keyframes qt-in { from { opacity: 0.6; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .qt-flicker, .qt-shimmer, .qt-bob, .qt-dash { animation-duration: 2s; animation-iteration-count: 2; }
+  .qt-atom { animation: none; }
+}
